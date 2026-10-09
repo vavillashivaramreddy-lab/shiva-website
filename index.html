@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>College Complaint System</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #f3f6fb;
+      color: #1e293b;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    header { margin-bottom: 24px; }
+    header h1 { margin-bottom: 8px; }
+    header p { margin: 0; color: #64748b; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      padding: 22px;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px #0f172a0a;
+    }
+
+    h2 { margin-top: 0; }
+
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 85px;
+      resize: vertical;
+    }
+
+    button {
+      padding: 11px 14px;
+      border: 0;
+      border-radius: 7px;
+      color: white;
+      background: #2563eb;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover { background: #1d4ed8; }
+
+    .submit-button {
+      width: 100%;
+      margin-top: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .toolbar h2 { margin: 0; }
+
+    .resolve-button { background: #15803d; }
+    .resolve-button:hover { background: #166534; }
+
+    .count {
+      margin: 0 0 16px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .complaint-card {
+      margin-bottom: 12px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .card-top h3 { margin: 0; font-size: 16px; }
+
+    .badge {
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+
+    .critical { color: #991b1b; background: #fee2e2; }
+    .high { color: #9a3412; background: #ffedd5; }
+    .medium { color: #854d0e; background: #fef9c3; }
+    .low { color: #166534; background: #dcfce7; }
+
+    .details {
+      margin: 12px 0 0;
+      color: #475569;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .empty {
+      padding: 28px 10px;
+      color: #64748b;
+      text-align: center;
+    }
+
+    #message {
+      min-height: 20px;
+      margin-top: 12px;
+      color: #166534;
+      font-size: 14px;
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 14px; }
+      .layout { grid-template-columns: 1fr; }
+      .toolbar { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>College Complaint Prioritization System</h1>
+      <p>Submit complaints and process them in priority order.</p>
+    </header>
+
+    <div class="layout">
+      <section class="panel">
+        <h2>Submit a Complaint</h2>
+
+        <form id="complaintForm">
+          <label for="studentName">Student name</label>
+          <input id="studentName" name="studentName" required>
+
+          <label for="branch">Branch</label>
+          <input id="branch" name="branch" required>
+
+          <label for="hostel">Hostel</label>
+          <input id="hostel" name="hostel" placeholder="Enter hostel or N/A" required>
+
+          <label for="description">Complaint</label>
+          <textarea id="description" name="description" required></textarea>
+
+          <label for="studentsAffected">Number of students affected</label>
+          <input
+            id="studentsAffected"
+            name="studentsAffected"
+            type="number"
+            min="1"
+            value="1"
+            required
+          >
+
+          <label for="location">Location</label>
+          <input id="location" name="location" required>
+
+          <label for="priority">Priority</label>
+          <select id="priority" name="priority" required>
+            <option value="" selected disabled>Select priority</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+
+          <button class="submit-button" type="submit">Add Complaint</button>
+          <div id="message" role="status"></div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="toolbar">
+          <h2>Pending Complaints</h2>
+          <button class="resolve-button" id="resolveButton" type="button">
+            Process Next Complaint
+          </button>
+        </div>
+
+        <p class="count" id="count">0 complaints</p>
+        <div id="complaintList"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const PRIORITY_RANK = {
+      critical: 1,
+      high: 2,
+      medium: 3,
+      low: 4
+    };
+
+    // Binary heap priority queue
+    class PriorityQueue {
+      constructor() {
+        this.items = [];
+      }
+
+      compare(a, b) {
+        const priorityDifference =
+          PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+
+        if (priorityDifference !== 0) {
+          return priorityDifference;
+        }
+
+        // If priority is equal, complaints affecting more students come first.
+        if (a.studentsAffected !== b.studentsAffected) {
+          return b.studentsAffected - a.studentsAffected;
+        }
+
+        // If still tied, process the older complaint first.
+        return a.order - b.order;
+      }
+
+      enqueue(item) {
+        this.items.push(item);
+        this.bubbleUp(this.items.length - 1);
+      }
+
+      dequeue() {
+        if (this.items.length === 0) return null;
+
+        const first = this.items[0];
+        const last = this.items.pop();
+
+        if (this.items.length > 0) {
+          this.items[0] = last;
+          this.bubbleDown(0);
+        }
+
+        return first;
+      }
+
+      bubbleUp(index) {
+        while (index > 0) {
+          const parentIndex = Math.floor((index - 1) / 2);
+
+          if (this.compare(this.items[index], this.items[parentIndex]) >= 0) {
+            break;
+          }
+
+          [this.items[index], this.items[parentIndex]] =
+            [this.items[parentIndex], this.items[index]];
+
+          index = parentIndex;
+        }
+      }
+
+      bubbleDown(index) {
+        while (true) {
+          const left = 2 * index + 1;
+          const right = 2 * index + 2;
+          let smallest = index;
+
+          if (
+            left < this.items.length &&
+            this.compare(this.items[left], this.items[smallest]) < 0
+          ) {
+            smallest = left;
+          }
+
+          if (
+            right < this.items.length &&
+            this.compare(this.items[right], this.items[smallest]) < 0
+          ) {
+            smallest = right;
+          }
+
+          if (smallest === index) break;
+
+          [this.items[index], this.items[smallest]] =
+            [this.items[smallest], this.items[index]];
+
+          index = smallest;
+        }
+      }
+
+      // Return complaints in priority order without changing the queue.
+      getOrderedItems() {
+        return [...this.items].sort((a, b) => this.compare(a, b));
+      }
+
+      get size() {
+        return this.items.length;
+      }
+    }
+
+    const queue = new PriorityQueue();
+    let nextTicketNumber = 1;
+    let nextArrivalOrder = 1;
+
+    const form = document.getElementById("complaintForm");
+    const complaintList = document.getElementById("complaintList");
+    const count = document.getElementById("count");
+    const message = document.getElementById("message");
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      const complaint = {
+        ticketNumber: nextTicketNumber++,
+        studentName: document.getElementById("studentName").value.trim(),
+        branch: document.getElementById("branch").value.trim(),
+        hostel: document.getElementById("hostel").value.trim(),
+        description: document.getElementById("description").value.trim(),
+        studentsAffected: Number(
+          document.getElementById("studentsAffected").value
+        ),
+        location: document.getElementById("location").value.trim(),
+        priority: document.getElementById("priority").value,
+        order: nextArrivalOrder++
+      };
+
+      queue.enqueue(complaint);
+      form.reset();
+      document.getElementById("studentsAffected").value = 1;
+
+      message.textContent =
+        `Complaint #${complaint.ticketNumber} added successfully.`;
+
+      renderComplaints();
+    });
+
+    document.getElementById("resolveButton").addEventListener("click", () => {
+      const resolved = queue.dequeue();
+
+      if (!resolved) {
+        message.textContent = "There are no complaints to process.";
+        return;
+      }
+
+      message.textContent =
+        `Complaint #${resolved.ticketNumber} has been processed.`;
+
+      renderComplaints();
+    });
+
+    function addDetail(card, label, value) {
+      const line = document.createElement("p");
+      line.className = "details";
+
+      const boldLabel = document.createElement("strong");
+      boldLabel.textContent = `${label}: `;
+
+      line.append(boldLabel, document.createTextNode(value));
+      card.appendChild(line);
+    }
+
+    function renderComplaints() {
+      complaintList.replaceChildren();
+
+      const orderedComplaints = queue.getOrderedItems();
+      count.textContent =
+        `${queue.size} ${queue.size === 1 ? "complaint" : "complaints"}`;
+
+      if (orderedComplaints.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No pending complaints.";
+        complaintList.appendChild(empty);
+        return;
+      }
+
+      for (const complaint of orderedComplaints) {
+        const card = document.createElement("article");
+        card.className = "complaint-card";
+
+        const top = document.createElement("div");
+        top.className = "card-top";
+
+        const title = document.createElement("h3");
+        title.textContent =
+          `#${complaint.ticketNumber} — ${complaint.studentName}`;
+
+        const badge = document.createElement("span");
+        badge.className = `badge ${complaint.priority}`;
+        badge.textContent = complaint.priority;
+
+        top.append(title, badge);
+        card.appendChild(top);
+
+        addDetail(card, "Branch", complaint.branch);
+        addDetail(card, "Hostel", complaint.hostel);
+        addDetail(card, "Complaint", complaint.description);
+        addDetail(card, "Students affected", complaint.studentsAffected);
+        addDetail(card, "Location", complaint.location);
+
+        complaintList.appendChild(card);
+      }
+    }
+
+    renderComplaints();
+  </script>
+</body>
+</html>
